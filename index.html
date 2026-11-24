@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Only the pinned three.js build and Google Fonts may load; nothing can phone home or embed plugins.
+     Inline scripts are allowed because the page has no user input to inject into. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Suman Tamang — Developer Portfolio</title>
+<meta name="description" content="Suman Tamang: aspiring developer and AI & automation enthusiast based in the United Kingdom.">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700&family=Manrope:wght@300;400;600&display=swap');
+
+:root {
+    --bg: #07070a;
+    --primary: #ff4a1c;
+    --accent: #ffb37a;
+    --text: #f5f1ec;
+    --muted: #bdb6b0;
+    --line: rgba(255, 255, 255, 0.12);
+    --pad: 60px;
+    --ease: cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+    width: 100%;
+    background: var(--bg);
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+::-webkit-scrollbar { display: none; width: 0; }
+
+body {
+    min-height: 900vh;
+    font-family: 'Manrope', sans-serif;
+    color: var(--text);
+    overflow-x: hidden;
+}
+
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 4px; }
+
+#webgl { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 1; outline: none; }
+/* Darkens the lower band where slide text sits, so bright wave crests can't drop body text below 4.5:1 */
+.scrim { position: fixed; inset: 0; z-index: 2; pointer-events: none; background: linear-gradient(to top, rgba(7, 7, 10, 0.85) 0%, rgba(7, 7, 10, 0) 58%); }
+
+/* Custom cursor: mouse users only; touch keeps the native behavior */
+.cursor-inner, .cursor-outer { display: none; }
+@media (pointer: fine) {
+    body, body * { cursor: none; }
+    .cursor-inner, .cursor-outer {
+        display: block; position: fixed; top: 0; left: 0;
+        border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none;
+    }
+    .cursor-inner { width: 6px; height: 6px; background: var(--primary); z-index: 9999; }
+    .cursor-outer {
+        width: 40px; height: 40px; border: 1.5px solid rgba(255, 255, 255, 0.6); z-index: 9998;
+        transition: width 0.3s, height 0.3s, border-color 0.3s, background 0.3s;
+    }
+    .cursor-outer.hover { width: 64px; height: 64px; border-color: var(--primary); }
+    .cursor-outer.cube { width: 56px; height: 56px; border-color: var(--accent); background: rgba(255, 74, 28, 0.12); }
+    .cursor-outer.drag { width: 28px; height: 28px; border-color: var(--accent); }
+}
+
+/* Overlay */
+.overlay {
+    position: fixed; inset: 0; z-index: 10; pointer-events: none;
+    padding: 0 var(--pad) 40px;
+}
+
+.main-header {
+    display: flex; justify-content: space-between; align-items: center;
+    height: 70px; pointer-events: auto;
+}
+.brand { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; text-decoration: none; }
+.brand span { color: var(--primary); }
+.header-nav { display: flex; align-items: center; gap: 24px; }
+.nav-link {
+    text-decoration: none; font-size: 11px; text-transform: uppercase; letter-spacing: 2px;
+    font-weight: 600; color: var(--muted); padding: 12px 0; transition: color 0.2s;
+}
+.nav-link:hover, .nav-link.current { color: var(--text); }
+.nav-dot { width: 3px; height: 3px; background: rgba(255, 255, 255, 0.25); border-radius: 50%; }
+.contact-btn {
+    display: inline-flex; align-items: center; gap: 8px; min-height: 44px;
+    padding: 0 24px; background: var(--text); color: #000; text-decoration: none;
+    font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;
+    border-radius: 22px; transition: background 0.2s;
+}
+.contact-btn:hover { background: var(--accent); }
+.btn-dot { width: 6px; height: 6px; background: var(--primary); border-radius: 50%; }
+
+/* Cube controls */
+.cube-controls {
+    position: fixed; top: 90px; right: var(--pad); z-index: 11;
+    display: flex; align-items: center; gap: 8px;
+}
+.cube-hint { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-right: 8px; }
+.hint-touch { display: none; }
+@media (pointer: coarse) { .hint-mouse { display: none; } .hint-touch { display: inline; } }
+.ghost-btn {
+    min-height: 44px; padding: 0 18px; border-radius: 22px;
+    border: 1px solid rgba(255, 255, 255, 0.25); background: rgba(7, 7, 10, 0.45);
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    color: var(--text); font: 600 11px 'Manrope', sans-serif; letter-spacing: 1.5px; text-transform: uppercase;
+    transition: border-color 0.2s, color 0.2s, opacity 0.2s;
+}
+.ghost-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--accent); }
+.ghost-btn:active:not(:disabled) { background: rgba(255, 74, 28, 0.2); }
+.ghost-btn:disabled { opacity: 0.4; }
+
+/* Slides */
+.slide {
+    position: absolute; bottom: 12%; left: var(--pad);
+    width: min(42vw, 580px);
+    pointer-events: none;
+    text-shadow: 0 2px 24px rgba(0, 0, 0, 0.6);
+}
+#slide-1 { width: min(48vw, 640px); }
+#slide-3 { left: auto; right: var(--pad); }
+.slide.active { pointer-events: auto; }
+
+.eyebrow {
+    display: block; font-size: 12px; letter-spacing: 3px; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 16px;
+}
+.slide-title {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(52px, 8.5vw, 124px);
+    line-height: 0.95; font-weight: 600; letter-spacing: -0.02em;
+    margin-bottom: 24px;
+}
+#slide-1 .slide-title { font-size: clamp(44px, 6.4vw, 100px); }
+#slide-1 .slide-title .dot { color: var(--primary); }
+.slide-title .char {
+    display: inline-block; opacity: 0; transform: translateY(50px); filter: blur(12px);
+    transition: opacity 0.8s var(--ease), transform 0.8s var(--ease), filter 0.8s var(--ease);
+}
+.slide.active .slide-title .char { opacity: 1; transform: none; filter: none; }
+
+.reveal {
+    opacity: 0; transform: translateY(30px);
+    transition: opacity 0.8s var(--ease) 0.4s, transform 0.8s var(--ease) 0.4s;
+}
+.slide.active .reveal { opacity: 1; transform: none; }
+
+.slide-desc { font-size: 16px; line-height: 1.7; font-weight: 300; color: var(--muted); max-width: 460px; }
+
+.work-list { list-style: none; border-top: 1px solid var(--line); }
+.work-item {
+    display: grid; grid-template-columns: auto 1fr auto; column-gap: 12px; align-items: baseline;
+    padding: 14px 0; border-bottom: 1px solid var(--line);
+}
+.work-num { font-size: 12px; color: var(--primary); font-weight: 600; letter-spacing: 1px; }
+.work-name { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 500; }
+.work-meta { font-size: 11px; letter-spacing: 1px; color: var(--accent); text-transform: uppercase; text-align: right; }
+.work-desc { grid-column: 2 / -1; font-size: 13px; line-height: 1.55; color: var(--muted); margin-top: 6px; }
+
+.skills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; list-style: none; }
+.skills li {
+    font-size: 12px; letter-spacing: 1px; text-transform: uppercase;
+    padding: 8px 14px; border: 1px solid rgba(255, 74, 28, 0.45); border-radius: 20px; color: var(--text);
+}
+
+.contact-mail {
+    display: inline-block; font-family: 'Syne', sans-serif; font-size: clamp(20px, 2.4vw, 32px);
+    text-decoration: none; border-bottom: 2px solid var(--primary); padding-bottom: 4px; margin-bottom: 24px;
+    word-break: break-all;
+}
+.contact-mail:hover { color: var(--accent); }
+.socials { display: flex; gap: 24px; list-style: none; }
+.socials a { font-size: 12px; letter-spacing: 2px; text-transform: uppercase; text-decoration: none; color: var(--muted); display: inline-block; padding: 12px 0; }
+.socials a:hover { color: var(--text); }
+
+/* Grid overlay */
+.grid-horizontal-line { position: fixed; top: 70px; left: 0; right: 0; height: 1px; background: var(--line); z-index: 5; pointer-events: none; }
+.grid-lines {
+    position: fixed; top: 0; left: 40px; right: 40px; height: 100vh;
+    display: flex; justify-content: space-between; z-index: 5; pointer-events: none;
+}
+.grid-line { position: relative; width: 1px; height: 100%; background: var(--line); }
+.grid-line:nth-child(3) { margin-top: 70px; height: calc(100vh - 70px); }
+.grid-dot {
+    position: absolute; left: 50%; transform: translate(-50%, -50%);
+    width: 6px; height: 6px; border-radius: 50%;
+    background: rgba(255, 255, 255, 0.35);
+}
+.grid-dot.hot { background: var(--primary); box-shadow: 0 0 8px var(--primary); }
+.story-dashes { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; gap: 12px; }
+.story-dash { width: 2px; height: 40px; background: rgba(255, 255, 255, 0.15); border-radius: 2px; overflow: hidden; }
+.story-dash-fill { width: 100%; height: 0%; background: var(--primary); }
+
+/* Mobile: text stacks along the bottom, cube is framed higher by the camera (see JS) */
+@media (max-width: 767px) {
+    :root { --pad: 20px; }
+    .header-nav { display: none; }
+    .cube-controls { top: 82px; }
+    .cube-hint { display: none; }
+    .slide, #slide-1, #slide-3 { left: var(--pad); right: var(--pad); width: auto; bottom: 4%; }
+    .slide-title { font-size: clamp(44px, 13vw, 60px); margin-bottom: 16px; }
+    #slide-1 .slide-title { font-size: clamp(40px, 11vw, 52px); }
+    .slide-desc { font-size: 15px; line-height: 1.6; }
+    .work-item { padding: 10px 0; }
+    .work-name { font-size: 16px; }
+    .work-meta { grid-column: 2 / -1; text-align: left; margin-top: 2px; }
+    .work-desc { font-size: 12.5px; }
+    .grid-lines { left: 10px; right: 10px; }
+    .grid-line:nth-child(2), .grid-line:nth-child(4) { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .slide-title .char, .reveal { transition: opacity 0.3s linear; transform: none; filter: none; }
+}
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<div class="cursor-inner"></div>
+<div class="cursor-outer"></div>
+
+<div class="overlay">
+  <header class="main-header">
+    <a href="#slide-1" class="brand" data-nav="0">Suman<span>.</span>Tamang</a>
+    <nav class="header-nav" aria-label="Sections">
+      <a href="#slide-1" class="nav-link" data-nav="0">Intro</a>
+      <span class="nav-dot" aria-hidden="true"></span>
+      <a href="#slide-2" class="nav-link" data-nav="1">Work</a>
+      <span class="nav-dot" aria-hidden="true"></span>
+      <a href="#slide-3" class="nav-link" data-nav="2">About</a>
+      <span class="nav-dot" aria-hidden="true"></span>
+      <a href="#slide-4" class="nav-link" data-nav="3">Contact</a>
+    </nav>
+    <a href="#slide-4" class="contact-btn" data-nav="3">Let's talk <span class="btn-dot" aria-hidden="true"></span></a>
+  </header>
+
+  <main>
+    <section class="slide" id="slide-1" aria-label="Intro">
+      <span class="eyebrow reveal">Aspiring Developer · AI &amp; Automation Enthusiast</span>
+      <h1 class="slide-title">Building <br>Ideas Into <br>Reality.</h1>
+      <p class="slide-desc reveal">I'm an aspiring developer interested in software development, artificial intelligence and automation. Based in the United Kingdom, I enjoy experimenting with technology, developing new skills and creating practical solutions to real-world problems.</p>
+    </section>
+
+    <section class="slide" id="slide-2" aria-label="Selected work">
+      <h2 class="slide-title">Selected <br>Work</h2>
+      <ul class="work-list reveal">
+        <li class="work-item">
+          <span class="work-num">01</span><span class="work-name">UK Air Quality Tracker</span><span class="work-meta">Python · 2026</span>
+          <p class="work-desc">A Python-based application that allows users to record, manage and analyse Air Quality Index (AQI) data across the capital cities of the United Kingdom.</p>
+        </li>
+        <li class="work-item">
+          <span class="work-num">02</span><span class="work-name">London ULEZ IoT Prototype</span><span class="work-meta">IoT · Networking · 2026</span>
+          <p class="work-desc">An Internet of Things prototype exploring how connected devices can monitor air quality and support London's Ultra Low Emission Zone.</p>
+        </li>
+        <li class="work-item">
+          <span class="work-num">03</span><span class="work-name">Little Learners AI</span><span class="work-meta">Artificial Intelligence · 2026</span>
+          <p class="work-desc">An educational technology project exploring how artificial intelligence can support interactive learning experiences for young children.</p>
+        </li>
+      </ul>
+    </section>
+
+    <section class="slide" id="slide-3" aria-label="About">
+      <h2 class="slide-title">About <br>Me</h2>
+      <p class="slide-desc reveal">I'm a computing student with a strong interest in technology, programming and problem-solving. I enjoy learning how different technologies work and applying that knowledge through practical projects. I'm particularly interested in artificial intelligence, automation, cybersecurity and software development.</p>
+      <ul class="skills reveal" aria-label="Skills">
+        <li>Python</li><li>Artificial Intelligence</li><li>Cybersecurity</li><li>Networking</li><li>IT Support</li>
+      </ul>
+    </section>
+
+    <section class="slide" id="slide-4" aria-label="Contact">
+      <h2 class="slide-title">Let's <br>Talk</h2>
+      <a class="contact-mail reveal" href="mailto:sumantamangop@gmail.com">sumantamangop@gmail.com</a>
+      <ul class="socials reveal">
+        <li><a href="https://github.com/sumantamangop-cyber" target="_blank" rel="noopener noreferrer">GitHub ↗</a></li>
+      </ul>
+    </section>
+  </main>
+</div>
+
+<div class="cube-controls">
+  <span class="cube-hint"><span class="hint-mouse">Drag to spin · click a block to twist</span><span class="hint-touch">Tap a block to twist</span></span>
+  <button type="button" class="ghost-btn" id="shuffle-btn">Shuffle</button>
+  <button type="button" class="ghost-btn" id="solve-btn" disabled>Solve</button>
+</div>
+
+<div class="grid-horizontal-line" aria-hidden="true"></div>
+<div class="grid-lines" aria-hidden="true">
+  <div class="grid-line"><div class="grid-dot"></div><div class="grid-dot"></div></div>
+  <div class="grid-line"><div class="grid-dot hot"></div><div class="grid-dot"></div></div>
+  <div class="grid-line"><div class="grid-dot"></div><div class="grid-dot"></div></div>
+  <div class="grid-line"><div class="grid-dot"></div><div class="grid-dot hot"></div></div>
+  <div class="grid-line">
+    <div class="grid-dot"></div><div class="grid-dot"></div>
+    <div class="story-dashes">
+      <div class="story-dash"><div class="story-dash-fill"></div></div>
+      <div class="story-dash"><div class="story-dash-fill"></div></div>
+      <div class="story-dash"><div class="story-dash-fill"></div></div>
+      <div class="story-dash"><div class="story-dash-fill"></div></div>
+    </div>
+  </div>
+</div>
+
+<canvas id="webgl" aria-label="Interactive 3D glass cube. Use the Shuffle and Solve buttons to turn it."></canvas>
+<div class="scrim" aria-hidden="true"></div>
+
+<script type="module">
+import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const clock = new THREE.Clock();
+const sizes = { width: innerWidth, height: innerHeight };
+
+let currentScroll = 0;
+let mouseX = 0, mouseY = 0, targetMouseX = 0, targetMouseY = 0;
+let cursorX = innerWidth / 2, cursorY = innerHeight / 2, outerX = cursorX, outerY = cursorY;
+
+const canvas = document.querySelector('#webgl');
+const slides = [...document.querySelectorAll('.slide')];
+const navLinks = [...document.querySelectorAll('.nav-link')];
+const dashFills = [...document.querySelectorAll('.story-dash-fill')];
+const gridDots = [...document.querySelectorAll('.grid-dot')];
+const cursorInner = document.querySelector('.cursor-inner');
+const cursorOuter = document.querySelector('.cursor-outer');
+const solveBtn = document.getElementById('solve-btn');
+
+// Slide visibility windows and the scroll point each nav link jumps to
+const ranges = [[-0.10, 0.12], [0.28, 0.40], [0.56, 0.68], [0.84, 1.05]];
+const navTargets = [0.0, 0.34, 0.62, 0.94];
+
+/* ---------- Scene ---------- */
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#07070a');
+
+const camera = new THREE.PerspectiveCamera(50, sizes.width / sizes.height, 0.1, 100);
+camera.position.set(0, 0.2, 4.2);
+scene.add(camera);
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+renderer.setSize(sizes.width, sizes.height);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.25;
+
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
+scene.add(new THREE.AmbientLight('#ffffff', 0.15));
+const keyLight = new THREE.SpotLight('#fff1e6', 30);
+keyLight.position.set(4, 6, 3);
+keyLight.angle = Math.PI / 4;
+keyLight.penumbra = 0.9;
+scene.add(keyLight);
+const rimLight = new THREE.DirectionalLight('#ffb37a', 4);
+rimLight.position.set(-5, 3, -4);
+scene.add(rimLight);
+const camFill = new THREE.DirectionalLight('#ffd9c2', 2.6); // rides with the camera so the far side of the orbit isn't black
+camFill.position.set(2, 3, 0);
+camera.add(camFill);
+const coreLight = new THREE.PointLight('#ff1a1a', 8, 4); // red glow from inside, shows through the gaps when the cube spreads
+scene.add(coreLight);
+
+/* ---------- Background wave shader (camera child, always fills view) ---------- */
+const shaderUniforms = {
+    uTime: { value: 0 },
+    uResolution: { value: new THREE.Vector2(sizes.width, sizes.height) },
+    uMouse: { value: new THREE.Vector2() },
+    uScroll: { value: 0 },
+    uPulse: { value: 0 }
+};
+const bgMesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(30, 30),
+    new THREE.ShaderMaterial({
+        uniforms: shaderUniforms, depthWrite: false, depthTest: false,
+        vertexShader: `void main() { gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+        fragmentShader: `
+            uniform float uTime; uniform vec2 uResolution; uniform vec2 uMouse; uniform float uScroll; uniform float uPulse;
+            void main() {
+                vec2 uv = (gl_FragCoord.xy - 0.5 * uResolution.xy) / uResolution.y;
+                float aspect = uResolution.x / uResolution.y;
+                float time = uTime * 0.08;
+                float d = uScroll * 5.0;
+                vec2 w = uv;
+                w.x += sin(uv.y * 2.5 + time * 0.2 + d) * 0.35;
+                w.y += cos(uv.x * 2.5 - time * 0.15 - d * 0.8) * 0.35;
+                w.x += sin(uv.y * 1.2 - time * 0.1 - d * 1.5) * 0.25;
+                w.y += cos(uv.x * 1.2 + time * 0.18 + d * 1.2) * 0.25;
+                w += vec2(uScroll * 0.04, -uScroll * 0.02) + vec2(uMouse.x * aspect * 0.05, uMouse.y * 0.05);
+                float w1 = sin(dot(w, vec2(cos(0.6), sin(0.6))) * 2.4 + time);
+                float w2 = cos(dot(w, vec2(cos(-0.7), sin(-0.7))) * 3.2 - time * 1.4 + w1 * 0.4);
+                float w3 = sin(dot(w, vec2(cos(1.2), sin(1.2))) * 4.0 + time * 1.8 + w2 * 0.5);
+                float f = w1 * 0.5 + w2 * 0.35 + w3 * 0.15;
+                float crest = pow(max(0.0, 1.0 - abs(f - 0.1)), 2.5) * 0.5 + pow(max(0.0, 1.0 - abs(f - 0.15)), 8.0) * 0.9;
+                float t = smoothstep(0.0, 1.0, uScroll);
+                // stays in the cube's family: ember orange at the top -> deep crimson at the bottom
+                vec3 cShadow = mix(vec3(0.0010, 0.0003, 0.0003), vec3(0.0010, 0.0002, 0.0003), t);
+                vec3 cWave1  = mix(vec3(0.085, 0.010, 0.010), vec3(0.070, 0.006, 0.012), t);
+                vec3 cWave2  = mix(vec3(0.045, 0.005, 0.005), vec3(0.036, 0.003, 0.007), t);
+                vec3 cCrest  = mix(vec3(0.46, 0.06, 0.05), vec3(0.42, 0.04, 0.07), t);
+                vec3 color = mix(cShadow, cWave2, smoothstep(-0.6, 0.2, f));
+                color = mix(color, cWave1, smoothstep(0.0, 0.8, f));
+                color += cCrest * crest * (1.2 + uPulse * 0.8); // crests flare briefly on each twist
+                color *= 1.0 - dot(uv, uv) * 0.15;
+                gl_FragColor = vec4(color, 1.0);
+            }`
+    })
+);
+bgMesh.position.z = -8;
+bgMesh.renderOrder = -10;
+camera.add(bgMesh);
+
+/* ---------- Glass cube: 27 cubies whose layers turn ---------- */
+const cubeGroup = new THREE.Group();
+cubeGroup.position.y = -0.1;
+cubeGroup.scale.setScalar(0.78);
+scene.add(cubeGroup);
+const turnPivot = new THREE.Group();
+cubeGroup.add(turnPivot);
+
+// Seeded random so the textures come out identical on every load
+function seeded(seed) {
+    return () => {
+        seed |= 0; seed = (seed + 0x6d2b79f5) | 0;
+        let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+}
+// One crack network drawn across the whole solved cube, then cut into each block's face,
+// so the cracks connect from block to block (and around the edges) whenever the cube is solved.
+const TILE = 192; // texture size of one block face
+const toTexture = c => {
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 8;
+    return tex;
+};
+const newCanvas = (w, h) => Object.assign(document.createElement('canvas'), { width: w, height: h });
+
+// Brushed metal streaks (light grey, multiplied by each material's color)
+const brushedTile = (() => {
+    const rand = seeded(5);
+    const c = newCanvas(TILE, TILE);
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#e6e6e6';
+    ctx.fillRect(0, 0, TILE, TILE);
+    for (let i = 0; i < 1100; i++) {
+        const v = 200 + Math.floor(rand() * 55);
+        ctx.fillStyle = `rgba(${v},${v},${v},0.5)`;
+        ctx.fillRect(rand() * TILE - 30, rand() * TILE, 30 + rand() * 120, 1);
+    }
+    return c;
+})();
+
+// The cube unfolded, in block cells (each cell = one block face, TILE px):
+//   rows 0-2, cols 0-2   top (+y)
+//   rows 3-5, cols 0-11  side ring: front (+z), right (+x), back (-z), left (-x)
+//   rows 6-8, cols 0-2   bottom (-y)
+// Each face's u runs left-to-right as seen from outside the cube, so the ring wraps seamlessly.
+const NET_W = 12 * TILE, NET_H = 9 * TILE;
+const crackNet = newCanvas(NET_W, NET_H); // dark groove + light bevel, drawn over metal
+const glowNet = newCanvas(NET_W, NET_H);  // thin core, so the crack still shows on black blocks
+(() => {
+    const rand = seeded(42);
+    const T = TILE;
+    // Main crack: zigzags all the way around the four sides and closes on itself
+    const ring = [];
+    const steps = 30;
+    const y0 = 4.4 * T;
+    let y = y0;
+    for (let i = 0; i <= steps; i++) {
+        ring.push([(i / steps) * NET_W, i === steps ? y0 : y]);
+        y += (i % 2 ? 1 : -1) * (0.35 + rand() * 0.45) * T;
+        y = Math.min(5.65 * T, Math.max(3.35 * T, y));
+    }
+    // Branches split off the ring and run onto the top and bottom faces
+    const branch = (from, toX, toY, n) => {
+        const pts = [from];
+        for (let i = 1; i <= n; i++) {
+            const t = i / n;
+            const jag = i === n ? 0 : (i % 2 ? 1 : -1) * (0.18 + rand() * 0.2) * T;
+            pts.push([from[0] + (toX - from[0]) * t + jag, from[1] + (toY - from[1]) * t]);
+        }
+        return pts;
+    };
+    const near = x => ring.reduce((a, p) => (Math.abs(p[0] - x) < Math.abs(a[0] - x) ? p : a));
+    const paths = [
+        { pts: ring, w: 1 },
+        { pts: branch(near(1.3 * T), 1.9 * T, 0.6 * T, 9), w: 0.8 },  // up the front onto the top
+        { pts: branch(near(2.4 * T), 1.0 * T, 8.4 * T, 9), w: 0.8 },  // down the front onto the bottom
+        { pts: branch(near(7.6 * T), 8.4 * T, 3.15 * T, 3), w: 0.6 }, // short spur on the back
+        { pts: branch(near(4.4 * T), 4.9 * T, 5.85 * T, 3), w: 0.6 }  // short spur on the right
+    ];
+    const trace = (ctx, pts, width, color, dy = 0) => {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = width;
+        ctx.lineJoin = 'miter';
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        pts.forEach(([px, py], i) => (i ? ctx.lineTo(px, py + dy) : ctx.moveTo(px, py + dy)));
+        ctx.stroke();
+    };
+    const c = crackNet.getContext('2d');
+    const g = glowNet.getContext('2d');
+    paths.forEach(({ pts, w }) => trace(c, pts, 5 * w, '#ffffff', 4 * w)); // bevel first...
+    paths.forEach(({ pts, w }) => trace(c, pts, 9 * w, '#0a0a0a'));        // ...groove on top
+    g.fillStyle = '#000';
+    g.fillRect(0, 0, NET_W, NET_H);
+    paths.forEach(({ pts, w }) => trace(g, pts, 3 * w, '#ffffff'));
+})();
+
+// Material slot order matches BoxGeometry groups: +x, -x, +y, -y, +z, -z.
+// u/v say which grid axis runs along the texture's u and v, and in which direction.
+const FACES = [
+    { axis: 'x', sign: 1, u: ['z', -1], v: ['y', 1], col0: 3, row0: 3 },
+    { axis: 'x', sign: -1, u: ['z', 1], v: ['y', 1], col0: 9, row0: 3 },
+    { axis: 'y', sign: 1, u: ['x', 1], v: ['z', -1], col0: 0, row0: 0 },
+    { axis: 'y', sign: -1, u: ['x', 1], v: ['z', 1], col0: 0, row0: 6 },
+    { axis: 'z', sign: 1, u: ['x', 1], v: ['y', 1], col0: 0, row0: 3 },
+    { axis: 'z', sign: -1, u: ['x', -1], v: ['y', 1], col0: 6, row0: 3 }
+];
+const RED = { color: '#c0141c', metalness: 0.7, roughness: 0.46, envMapIntensity: 0.9 };
+const BLACK = { color: '#1d1a1a', metalness: 0.45, roughness: 0.55, envMapIntensity: 0.6 };
+const plainTex = toTexture(brushedTile);
+const redPlain = new THREE.MeshStandardMaterial({ ...RED, map: plainTex, roughnessMap: plainTex });
+const charcoalPlain = new THREE.MeshStandardMaterial({ ...BLACK, map: plainTex, roughnessMap: plainTex });
+
+function outerFaceMaterial(face, g, black) {
+    const [ua, us] = face.u, [va, vs] = face.v;
+    const col = face.col0 + (us > 0 ? g[ua] + 1 : 1 - g[ua]);
+    const row = face.row0 + (vs > 0 ? 1 - g[va] : g[va] + 1); // image rows run top-down, v runs bottom-up
+    const c = newCanvas(TILE, TILE);
+    const ctx = c.getContext('2d');
+    ctx.drawImage(brushedTile, 0, 0);
+    ctx.drawImage(crackNet, col * TILE, row * TILE, TILE, TILE, 0, 0, TILE, TILE);
+    const tex = toTexture(c);
+    if (!black) return new THREE.MeshStandardMaterial({ ...RED, map: tex, roughnessMap: tex });
+    // On black blocks a dark groove would vanish, so the crack core glows deep red instead
+    const e = newCanvas(TILE, TILE);
+    e.getContext('2d').drawImage(glowNet, col * TILE, row * TILE, TILE, TILE, 0, 0, TILE, TILE);
+    return new THREE.MeshStandardMaterial({ ...BLACK, map: tex, roughnessMap: tex, emissive: '#d0100a', emissiveIntensity: 1.2, emissiveMap: toTexture(e) });
+}
+
+// Fixed layout: black where (x + 2y + z) % 3 == 0. On every face this traces a
+// zigzag (one black block per row, stepping right-left-center), 9 of 27 blocks.
+const isCharcoal = (x, y, z) => (((x + 2 * y + z) % 3) + 3) % 3 === 0;
+console.assert([...Array(27).keys()].filter(i => isCharcoal(Math.floor(i / 9) - 1, Math.floor(i / 3) % 3 - 1, i % 3 - 1)).length === 9, 'zigzag layout should have 9 charcoal blocks');
+const cubieGeo = new RoundedBoxGeometry(0.6, 0.6, 0.6, 4, 0.08);
+const BASE_SPACING = 0.64;
+let spacing = BASE_SPACING;
+const cubies = [];
+for (let x = -1; x <= 1; x++) for (let y = -1; y <= 1; y++) for (let z = -1; z <= 1; z++) {
+    const g = { x, y, z };
+    const black = isCharcoal(x, y, z);
+    const materials = FACES.map(f => (g[f.axis] === f.sign ? outerFaceMaterial(f, g, black) : black ? charcoalPlain : redPlain));
+    const m = new THREE.Mesh(cubieGeo, materials);
+    m.userData.g = new THREE.Vector3(x, y, z); // integer grid slot
+    m.position.copy(m.userData.g).multiplyScalar(spacing);
+    cubeGroup.add(m);
+    cubies.push(m);
+}
+
+/* ---------- Turns: auto (until the visitor takes over), clicks, shuffle, solve ---------- */
+const HALF_PI = Math.PI / 2;
+const easeInOut = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const queue = [];   // pending moves: { axis, dir, dur, layer? | cubie?, record? }
+const history = []; // every recorded move, so Solve can play them back in reverse
+let turn = null;
+let nextTurnAt = 1.0;
+let userTookOver = false;
+let pulse = 0;
+
+const randomMove = dur => ({ axis: 'xyz'[Math.floor(Math.random() * 3)], layer: Math.floor(Math.random() * 3) - 1, dir: Math.random() < 0.5 ? 1 : -1, dur });
+
+function startTurn(move) {
+    const layer = move.cubie ? move.cubie.userData.g[move.axis] : move.layer;
+    turnPivot.rotation.set(0, 0, 0);
+    cubeGroup.updateMatrixWorld(true);
+    cubies.filter(c => c.userData.g[move.axis] === layer).forEach(c => turnPivot.attach(c));
+    if (move.record !== false) history.push({ axis: move.axis, layer, dir: move.dir });
+    turn = { axis: move.axis, dir: move.dir, dur: move.dur, t: 0 };
+    pulse = 1;
+}
+function endTurn() {
+    cubeGroup.updateMatrixWorld(true);
+    [...turnPivot.children].forEach(c => {
+        cubeGroup.attach(c);
+        c.userData.g.copy(c.position).divideScalar(spacing).round();
+        // snap to exact quarter turns so float error never accumulates
+        c.rotation.set(
+            Math.round(c.rotation.x / HALF_PI) * HALF_PI,
+            Math.round(c.rotation.y / HALF_PI) * HALF_PI,
+            Math.round(c.rotation.z / HALF_PI) * HALF_PI
+        );
+    });
+    turnPivot.rotation.set(0, 0, 0);
+    turn = null;
+}
+
+function takeOver() { userTookOver = true; }
+if (new URLSearchParams(location.search).has('debug')) {
+    window.cubeDebug = { cubies, history, queue, camera, cubeGroup, THREE };
+    userTookOver = true; // hold the cube still (no auto twists) for inspection
+}
+
+document.getElementById('shuffle-btn').addEventListener('click', () => {
+    takeOver();
+    for (let i = 0; i < 10; i++) queue.push(randomMove(0.28));
+});
+solveBtn.addEventListener('click', () => {
+    takeOver();
+    queue.length = 0; // drop anything not started yet; the running turn is already in history
+    if (turn) turn.t = 1;
+    while (history.length) {
+        const m = history.pop();
+        queue.push({ axis: m.axis, layer: m.layer, dir: -m.dir, dur: 0.2, record: false });
+    }
+});
+
+/* ---------- Pointer: drag to spin (mouse), click/tap a block to twist ---------- */
+const raycaster = new THREE.Raycaster();
+const ndc = new THREE.Vector2();
+const tmpQ = new THREE.Quaternion();
+const tmpV = new THREE.Vector3();
+const camUp = new THREE.Vector3();
+let hovered = null;
+let overLink = false;
+let pointerDirty = false;
+let lastPointerType = 'mouse';
+let press = null; // { x, y, lastX, lastY, moved, mouse }
+let spinX = 0, spinY = 0, velX = 0, velY = 0;
+
+function pick(x, y) {
+    ndc.set((x / innerWidth) * 2 - 1, -(y / innerHeight) * 2 + 1);
+    raycaster.setFromCamera(ndc, camera);
+    return raycaster.intersectObjects(cubies, false)[0] || null;
+}
+
+function twistAt(x, y) {
+    const hit = pick(x, y);
+    if (!hit) return;
+    takeOver();
+    // Face normal in the cube's own frame tells us which face was clicked
+    cubeGroup.getWorldQuaternion(tmpQ).invert();
+    const n = tmpV.copy(hit.face.normal).transformDirection(hit.object.matrixWorld).applyQuaternion(tmpQ);
+    const ax = Math.abs(n.x), ay = Math.abs(n.y), az = Math.abs(n.z);
+    const faceAxis = ax > ay ? (ax > az ? 'x' : 'z') : (ay > az ? 'y' : 'z');
+    // Of the two axes lying in that face, turn around the one closest to screen-up,
+    // so a click on a side face spins its row sideways, which feels natural
+    camUp.set(0, 1, 0).applyQuaternion(camera.quaternion).applyQuaternion(tmpQ);
+    const [a1, a2] = 'xyz'.replace(faceAxis, '').split('');
+    const axis = Math.abs(camUp[a1]) >= Math.abs(camUp[a2]) ? a1 : a2;
+    // Clicking right of the cube's center turns one way, left the other
+    const center = cubeGroup.getWorldPosition(tmpV).project(camera);
+    const dir = (ndc.x > center.x ? 1 : -1) * Math.sign(camUp[axis] || 1);
+    queue.push({ axis, cubie: hit.object, dir, dur: 0.42 });
+}
+
+canvas.addEventListener('pointerdown', e => {
+    press = { x: e.clientX, y: e.clientY, lastX: e.clientX, lastY: e.clientY, moved: 0, mouse: e.pointerType === 'mouse' };
+    if (press.mouse) { velX = velY = 0; canvas.setPointerCapture(e.pointerId); }
+});
+addEventListener('pointermove', e => {
+    lastPointerType = e.pointerType;
+    cursorX = e.clientX;
+    cursorY = e.clientY;
+    cursorInner.style.left = `${cursorX}px`;
+    cursorInner.style.top = `${cursorY}px`;
+    targetMouseX = (e.clientX / innerWidth) * 2 - 1;
+    targetMouseY = (e.clientY / innerHeight) * 2 - 1;
+    pointerDirty = true;
+    if (press) {
+        press.moved = Math.max(press.moved, Math.hypot(e.clientX - press.x, e.clientY - press.y));
+        if (press.mouse && press.moved > 6) {
+            velY = (e.clientX - press.lastX) * 0.006;
+            velX = (e.clientY - press.lastY) * 0.006;
+            spinY += velY;
+            spinX = Math.max(-1.1, Math.min(1.1, spinX + velX));
+            takeOver();
+        }
+        press.lastX = e.clientX;
+        press.lastY = e.clientY;
+    }
+});
+addEventListener('pointerup', e => {
+    if (press && press.moved <= 6) twistAt(e.clientX, e.clientY);
+    press = null;
+});
+addEventListener('pointercancel', () => (press = null)); // touch scroll took over
+document.addEventListener('mouseover', e => (overLink = !!e.target.closest('a, button')));
+
+/* ---------- Ember sparks ---------- */
+const sparkCount = 350;
+const sparkData = [];
+const sparkPos = new Float32Array(sparkCount * 3);
+const sparkCol = new Float32Array(sparkCount * 3);
+for (let i = 0; i < sparkCount; i++) {
+    sparkPos.set([(Math.random() - 0.5) * 6.5, (Math.random() - 0.5) * 5 - 0.5, (Math.random() - 0.5) * 6.5], i * 3);
+    sparkCol.set(Math.random() < 0.7
+        ? [1.0, 0.3 + Math.random() * 0.2, 0.05 + Math.random() * 0.1]
+        : [1.0, 0.85, 0.7], i * 3);
+    sparkData.push({
+        vx: (Math.random() - 0.5) * 0.4, vy: 0.15 + Math.random() * 0.3, vz: (Math.random() - 0.5) * 0.4,
+        sway: 0.5 + Math.random() * 1.5, radius: 0.05 + Math.random() * 0.15, phase: Math.random() * Math.PI * 2
+    });
+}
+const sparkTex = (() => {
+    const c = document.createElement('canvas');
+    c.width = c.height = 16;
+    const ctx = c.getContext('2d');
+    const g = ctx.createRadialGradient(8, 8, 0, 8, 8, 8);
+    g.addColorStop(0, 'rgba(255,255,255,1)');
+    g.addColorStop(0.3, 'rgba(255,255,255,0.8)');
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 16, 16);
+    return new THREE.CanvasTexture(c);
+})();
+const sparkGeo = new THREE.BufferGeometry();
+sparkGeo.setAttribute('position', new THREE.BufferAttribute(sparkPos, 3));
+sparkGeo.setAttribute('color', new THREE.BufferAttribute(sparkCol, 3));
+scene.add(new THREE.Points(sparkGeo, new THREE.PointsMaterial({
+    size: 0.025, vertexColors: true, transparent: true, opacity: 0.85,
+    blending: THREE.AdditiveBlending, depthWrite: false, map: sparkTex
+})));
+
+/* ---------- Overlay: title split, slides, nav ---------- */
+// Walk child nodes so <br> survives; words stay whole because letters are inline-blocks
+document.querySelectorAll('.slide-title').forEach(title => {
+    let n = 0;
+    const frag = document.createDocumentFragment();
+    [...title.childNodes].forEach(node => {
+        if (node.nodeType !== Node.TEXT_NODE) { frag.append(node.cloneNode()); return; }
+        node.textContent.split(/\s+/).filter(Boolean).forEach((word, wi) => {
+            if (wi) frag.append(' ');
+            const w = document.createElement('span');
+            w.style.whiteSpace = 'nowrap';
+            for (const ch of word) {
+                const s = document.createElement('span');
+                s.className = ch === '.' ? 'char dot' : 'char';
+                s.style.transitionDelay = `${n++ * 0.035}s`;
+                s.textContent = ch;
+                w.append(s);
+            }
+            frag.append(w);
+        });
+    });
+    title.setAttribute('aria-label', title.textContent.replace(/\s+/g, ' ').trim());
+    title.replaceChildren(frag);
+    title.querySelectorAll('.char').forEach(c => c.setAttribute('aria-hidden', 'true'));
+});
+
+function updateOverlay(scroll) {
+    dashFills.forEach((fill, i) => {
+        fill.style.height = `${Math.max(0, Math.min(1, (scroll - i * 0.25) / 0.25)) * 100}%`;
+    });
+    slides.forEach((slide, i) => {
+        const on = scroll >= ranges[i][0] && scroll <= ranges[i][1];
+        if (slide.classList.contains('active') !== on) {
+            slide.classList.toggle('active', on);
+            slide.inert = !on; // hidden slides drop out of tab order and screen readers
+            navLinks[i]?.classList.toggle('current', on);
+        }
+    });
+    gridDots.forEach((dot, i) => {
+        let speed = 90 + (i * 55) % 180;
+        if (i % 2 === 0) speed = -speed;
+        const y = ((((i * 17) % 80 + 10 + scroll * speed) % 100) + 100) % 100;
+        dot.style.top = `${y}%`;
+    });
+}
+slides.forEach(s => (s.inert = true));
+
+document.querySelectorAll('[data-nav]').forEach(link => {
+    link.addEventListener('click', e => {
+        e.preventDefault();
+        const max = document.documentElement.scrollHeight - innerHeight;
+        scrollTo({ top: max * navTargets[+link.dataset.nav], behavior: reduceMotion ? 'auto' : 'smooth' });
+    });
+});
+
+addEventListener('resize', () => {
+    sizes.width = innerWidth;
+    sizes.height = innerHeight;
+    camera.aspect = sizes.width / sizes.height;
+    camera.updateProjectionMatrix();
+    renderer.setSize(sizes.width, sizes.height);
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    shaderUniforms.uResolution.value.set(sizes.width, sizes.height);
+});
+
+/* ---------- Camera framing ---------- */
+// Negative = cube on the right of the screen. Text is left on slides 1, 2, 4 and right on 3.
+const frameKeys = [[0, -1.1], [0.4, -1.1], [0.56, 1.1], [0.68, 1.1], [0.84, -1.1], [1, -1.1]];
+function frameOffset(s) {
+    for (let i = 1; i < frameKeys.length; i++) {
+        const [s1, v1] = frameKeys[i], [s0, v0] = frameKeys[i - 1];
+        if (s <= s1) {
+            const t = Math.max(0, (s - s0) / (s1 - s0));
+            return v0 + (v1 - v0) * (1 - Math.cos(t * Math.PI)) / 2;
+        }
+    }
+    return frameKeys[frameKeys.length - 1][1];
+}
+console.assert(frameOffset(0.34) === -1.1 && frameOffset(0.62) === 1.1 && Math.abs(frameOffset(0.48)) < 1e-9, 'frameOffset keys');
+const lookAt = new THREE.Vector3();
+const camTarget = new THREE.Vector3();
+
+/* ---------- Loop ---------- */
+function animate() {
+    requestAnimationFrame(animate);
+    const dt = Math.min(clock.getDelta(), 0.05);
+    const time = clock.elapsedTime;
+
+    const max = document.documentElement.scrollHeight - innerHeight;
+    const targetScroll = max > 0 ? scrollY / max : 0;
+    currentScroll += (targetScroll - currentScroll) * (reduceMotion ? 0.2 : 0.025);
+    mouseX += (targetMouseX - mouseX) * 0.05;
+    mouseY += (targetMouseY - mouseY) * 0.05;
+
+    outerX += (cursorX - outerX) * 0.2;
+    outerY += (cursorY - outerY) * 0.2;
+    cursorOuter.style.left = `${outerX}px`;
+    cursorOuter.style.top = `${outerY}px`;
+
+    // Drag spin keeps a little inertia after release
+    if (!press) {
+        spinY += velY;
+        spinX = Math.max(-1.1, Math.min(1.1, spinX + velX));
+        velY *= 0.93;
+        velX *= 0.93;
+    }
+    const idle = reduceMotion || userTookOver ? 0 : time * 0.12;
+    cubeGroup.rotation.y = idle + mouseX * 0.3 + spinY;
+    cubeGroup.rotation.x = 0.35 + mouseY * 0.2 + spinX;
+
+    // Hover: raycast only when the mouse moved
+    if (pointerDirty && lastPointerType === 'mouse') {
+        cubeGroup.updateMatrixWorld(true);
+        hovered = pick(cursorX, cursorY)?.object || null;
+        pointerDirty = false;
+    }
+    cubies.forEach(c => c.scale.setScalar(THREE.MathUtils.lerp(c.scale.x, c === hovered ? 1.1 : 1, 0.2)));
+    cursorOuter.classList.toggle('drag', !!(press && press.mouse && press.moved > 6));
+    cursorOuter.classList.toggle('cube', !!hovered && !overLink && !press);
+    cursorOuter.classList.toggle('hover', overLink);
+
+    // Turns
+    if (!turn) {
+        if (queue.length) startTurn(queue.shift());
+        else if (!userTookOver && !reduceMotion && time > nextTurnAt) {
+            startTurn(randomMove(0.75));
+            nextTurnAt = time + 0.75 + 0.5 + Math.random() * 0.9;
+        }
+    }
+    if (turn) {
+        turn.t = Math.min(1, turn.t + dt / turn.dur);
+        turnPivot.rotation[turn.axis] = turn.dir * HALF_PI * easeInOut(turn.t);
+        if (turn.t === 1) endTurn();
+    }
+    if (!turn) {
+        const spread = Math.sin(Math.min(1, Math.max(0, (currentScroll - 0.2) / 0.6)) * Math.PI);
+        spacing = BASE_SPACING + spread * (camera.aspect < 1 ? 0.2 : 0.4); // less spread on phones so it clears the text
+        cubies.forEach(c => c.position.copy(c.userData.g).multiplyScalar(spacing));
+    }
+    const solvable = history.length > 0;
+    if (solveBtn.disabled === solvable) solveBtn.disabled = !solvable;
+
+    pulse = Math.max(0, pulse - dt * 2.5);
+    coreLight.intensity = 6 + Math.sin(time * 1.5) * 2 + pulse * 6;
+
+    // Sparks rise faster while scrolling or twisting
+    const vel = Math.abs(targetScroll - currentScroll) + pulse * 0.04;
+    const speedMul = 1 + vel * 9;
+    const swayMul = 1 + vel * 3.2;
+    for (let i = 0; i < sparkCount; i++) {
+        const k = i * 3, d = sparkData[i];
+        sparkPos[k] += d.vx * dt * speedMul + Math.sin(time * d.sway + d.phase) * d.radius * swayMul * dt;
+        sparkPos[k + 1] += d.vy * dt * speedMul;
+        sparkPos[k + 2] += d.vz * dt * speedMul + Math.cos(time * d.sway + d.phase) * d.radius * swayMul * dt;
+        if (sparkPos[k + 1] > 3 || Math.abs(sparkPos[k]) > 3.5 || Math.abs(sparkPos[k + 2]) > 3.5) {
+            sparkPos[k] = (Math.random() - 0.5) * 3;
+            sparkPos[k + 1] = -2.5;
+            sparkPos[k + 2] = (Math.random() - 0.5) * 3;
+        }
+    }
+    sparkGeo.attributes.position.needsUpdate = true;
+
+    // Camera orbits 360° with scroll; portrait screens pull back and frame the cube higher
+    const portrait = camera.aspect < 1;
+    const arc = Math.sin(currentScroll * Math.PI);
+    const radius = (4.4 - arc * 0.6) * (portrait ? 2.0 : 1);
+    const phi = currentScroll * Math.PI * 2;
+    camTarget.set(radius * Math.sin(phi), 0.35 + arc * 0.8, radius * Math.cos(phi));
+    camera.position.lerp(camTarget, reduceMotion ? 0.2 : 0.025);
+    // Offset along the camera's right vector so the cube sits opposite each slide's text
+    const off = portrait ? 0 : frameOffset(currentScroll);
+    lookAt.set(Math.cos(phi) * off, portrait ? -2.0 : -0.15, -Math.sin(phi) * off);
+    camera.lookAt(lookAt);
+
+    shaderUniforms.uTime.value = time;
+    shaderUniforms.uMouse.value.set(mouseX, -mouseY);
+    shaderUniforms.uScroll.value = currentScroll;
+    shaderUniforms.uPulse.value = pulse;
+
+    updateOverlay(currentScroll);
+    renderer.render(scene, camera);
+}
+animate();
+</script>
+</body>
+</html>
